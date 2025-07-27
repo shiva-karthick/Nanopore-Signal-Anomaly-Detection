@@ -15,13 +15,7 @@ def apply_butterworth_filter(signal, cutoff=0.01, order=4):
 
     - Order (4): The order of the Butterworth filter determines the steepness of the filter's attenuation curve. A higher order results in a sharper cutoff, meaning that frequencies above the cutoff are more rapidly attenuated. An order of 4 provides a reasonable trade-off between effective noise reduction and avoiding excessive phase distortion or ringing artifacts in the filtered signal.
 
-    Args:
-        signal (np.array): The raw input signal.
-        cutoff (float): The normalized cutoff frequency (0 to 1).
-        order (int): The order of the filter.
-
-    Returns:
-        np.array: The filtered signal.
+    Play with these parameters to see how they affect the filtered signal.
     """
     # Get the filter coefficients
     b, a = butter(order, cutoff, btype="low", analog=False)
