@@ -1,57 +1,45 @@
-# =============================================================================
-# Description: This script reads a single-read or multi-read FAST5 file from
-#              Oxford Nanopore sequencing, extracts the raw electrical
-#              current signal ("squiggle") from the first available read,
-#              and generates a plot of the signal over time.
-# =============================================================================
+#     Reads a .pod5 file and plots the raw signal of the first read found.
 
-import h5py
+import pod5
 import matplotlib.pyplot as plt
+import os
 
 
-def plot_first_squiggle(fast5_filepath):
-    """
-    Reads a .fast5 file and plots the raw signal of the first read found.
-
-    Args:
-        fast5_filepath (str): The full path to the .fast5 file.
-    """
+def plot_first_pod5_squiggle(pod5_filepath) -> None:
     try:
-        # Open the FAST5 file in read-only mode
-        with h5py.File(fast5_filepath, "r") as f5:
-            print(f"Successfully opened: {fast5_filepath}")
+        with pod5.Reader(pod5_filepath) as reader:
+            print(f"Successfully opened: {pod5_filepath}")
 
-            # --- Find the first read in the file ---
-            # The structure can vary slightly, but reads are typically under the 'Raw/Reads' group.
-            # We will programmatically find the first read entry.
-            reads_group = f5.get("Raw/Reads")
-            if reads_group is None:
-                print("Error: Could not find the 'Raw/Reads' group in the file.")
-                print("This might not be a valid raw signal FAST5 file.")
+            # The Reader object allows us to iterate through all reads in the file.
+            # We only need the first one for my purpose.
+            first_read_record = next(reader.reads(), None)
+
+            if first_read_record is None:
+                print("Error: No reads found in this POD5 file.")
                 return
 
-            if not list(reads_group.keys()):
-                print("Error: No reads found in the 'Raw/Reads' group.")
+            # Extract the raw signal
+            # The read record object has a 'signal' attribute which is a numpy array
+            raw_signal = first_read_record.signal
+
+            if raw_signal is None:
+                print(
+                    f"Error: Could not retrieve signal for read ID: {first_read_record.read_id}"
+                )
                 return
 
-            # Get the name of the first read (e.g., 'Read_123')
-            first_read_name = list(reads_group.keys())[0]
-            print(f"Found first read: {first_read_name}")
+            print(f"Extracted signal from read: {first_read_record.read_id}")
+            print(f"Signal contains {len(raw_signal)} data points.")
 
-            # --- Extract the raw signal ---
-            # The signal data is stored in the 'Signal' dataset for that read.
-            signal_dataset = reads_group[first_read_name]["Signal"]
-            raw_signal = signal_dataset[:]  # Load the entire dataset into memory
-
-            print(f"Extracted raw signal with {len(raw_signal)} data points.")
-
-            # --- Plot the raw signal ---
+            # Plot the raw signal
             plt.style.use("seaborn-v0_8-whitegrid")
-            plt.figure(figsize=(20, 5))  # Use a wide figure to see the signal details
+            plt.figure(figsize=(20, 5))  # Use a wide figure for better detail
 
-            # Plot a subset of the signal for clarity, as the full signal can be very long
-            plot_points = 5000
-            if len(raw_signal) > plot_points:
+            # For clarity, we'll plot a subset of the signal. Full signals are huge nd seemed to be messy.
+            plot_points: int = len(
+                raw_signal
+            )  # Change the number of points to plot as needed
+            if len(raw_signal) >= plot_points:
                 print(f"Plotting the first {plot_points} points for clarity.")
                 signal_to_plot = raw_signal[:plot_points]
             else:
@@ -59,29 +47,32 @@ def plot_first_squiggle(fast5_filepath):
 
             plt.plot(signal_to_plot)
 
-            # --- Add plot details ---
+            # Add plot details
             plt.title(
-                f"Raw Nanopore Signal (Squiggle)\nFile: {fast5_filepath.split('/')[-1]} | Read: {first_read_name}",
+                f"Raw Nanopore Signal (Squiggle) from POD5\nFile: {os.path.basename(pod5_filepath)} | Read ID: {first_read_record.read_id}",
                 fontsize=16,
             )
             plt.xlabel("Time (Samples)", fontsize=12)
             plt.ylabel("Raw Current Signal (pA)", fontsize=12)
-            plt.tight_layout()  # Adjust layout to make sure everything fits
+            plt.tight_layout()
 
-            # --- Show the plot ---
+            # Save and Show the plot
             print("Displaying plot...")
+            plt.savefig("raw_signal_plot.png", dpi=300, bbox_inches="tight")
             plt.show()
 
     except FileNotFoundError:
-        print(f"Error: The file '{fast5_filepath}' was not found.")
+        print(f"Error: The file '{pod5_filepath}' was not found.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-        print("Please ensure the file is a valid, uncorrupted .fast5 file.")
-
+        print("Please ensure this is a valid, uncorrupted .pod5 file.")
 
 
 if __name__ == "__main__":
-    
-    file_path = "data/SRR7517493"  # Replace with your actual file path
-
-    plot_first_squiggle(file_path)
+    """
+    The raw signal with all the data points is very messy and hard to read.
+    For clarity, we will plot only the first 1000 points.
+    """
+    plot_first_pod5_squiggle(
+        "data/raw/PAU85136/pod5/PAU85136_fail_279c9095_68316534_10.pod5"
+    )

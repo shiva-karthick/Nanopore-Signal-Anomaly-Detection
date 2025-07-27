@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir \
     edlib \
     scikit-learn \
     jupyterlab \
-    h5py \
+    pod5 \
     seaborn
 
 # Copy your project files (optional, for production)
